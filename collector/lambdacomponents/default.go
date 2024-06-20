@@ -27,6 +27,7 @@ import (
 	"go.opentelemetry.io/collector/exporter/loggingexporter"
 	"go.opentelemetry.io/collector/exporter/otlpexporter"
 	"go.opentelemetry.io/collector/exporter/otlphttpexporter"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/datadogexporter"
 	"go.opentelemetry.io/collector/extension"
 	"go.opentelemetry.io/collector/otelcol"
 	"go.opentelemetry.io/collector/processor"
@@ -34,10 +35,13 @@ import (
 	"go.opentelemetry.io/collector/processor/memorylimiterprocessor"
 	"go.opentelemetry.io/collector/receiver"
 	"go.opentelemetry.io/collector/receiver/otlpreceiver"
+	"go.opentelemetry.io/collector/connector"
 	"go.uber.org/multierr"
 
 	"github.com/open-telemetry/opentelemetry-lambda/collector/processor/coldstartprocessor"
 	"github.com/open-telemetry/opentelemetry-lambda/collector/receiver/telemetryapireceiver"
+
+	"github.com/open-telemetry/opentelemetry-collector-contrib/connector/datadogconnector"
 )
 
 func Components(extensionID string) (otelcol.Factories, error) {
@@ -56,6 +60,7 @@ func Components(extensionID string) (otelcol.Factories, error) {
 		otlpexporter.NewFactory(),
 		otlphttpexporter.NewFactory(),
 		prometheusremotewriteexporter.NewFactory(),
+		datadogexporter.NewFactory(),
 	)
 	if err != nil {
 		errs = append(errs, err)
@@ -83,11 +88,19 @@ func Components(extensionID string) (otelcol.Factories, error) {
 		errs = append(errs, err)
 	}
 
+	connectors, err := connector.MakeFactoryMap(
+		datadogconnector.NewFactory(),
+	)
+	if err != nil {
+		errs = append(errs, err)
+	}
+
 	factories := otelcol.Factories{
 		Receivers:  receivers,
 		Exporters:  exporters,
 		Processors: processors,
 		Extensions: extensions,
+		Connectors: connectors,
 	}
 
 	return factories, multierr.Combine(errs...)
